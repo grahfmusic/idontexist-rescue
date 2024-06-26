@@ -1,4 +1,3 @@
-```markdown
 # idontexist-rescue
 
 ![idontexist-rescue](example.png)
