@@ -1,6 +1,6 @@
 # idontexist-rescue
 
-![idontexist-rescue](example.png)
+![idontexist-rescue](doco.png)
 
 **idontexist-rescue** is a Python script designed to facilitate backup and restore operations for my Jellyfin and automation applications. It automates the process of backing up application data to specified directories and supports restoring from previously created backups or compressed archives.
 
