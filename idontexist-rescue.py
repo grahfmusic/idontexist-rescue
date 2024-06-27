@@ -4,7 +4,6 @@ import os
 import time
 import subprocess
 import datetime
-import tarfile
 import shutil
 from pathlib import Path
 from tqdm import tqdm
@@ -19,7 +18,7 @@ from colorama import init, Fore, Style
 # Initialize colorama
 colorama.init()
 
-# Define backup paths
+# Define backup paths (unchanged)
 backup_paths = {
     "jellyfin": ["/var/lib/jellyfin", "/etc/jellyfin", "/usr/share/jellyfin"],
     "sonarr": ["/var/lib/sonarr"],
@@ -78,13 +77,13 @@ def run_command_with_progress(command, verbose):
             percent = progress / total if total else 0
             elapsed = time.time() - start_time
 
-            # Build the progress bar
+            # Build the progress bar (unchanged)
             filled_length = int(progress_bar_length * percent)
             progress_bar = "█" * filled_length + "-" * (
                 progress_bar_length - filled_length
             )
 
-            # Add the color gradient to the progress bar
+            # Add the color gradient to the progress bar (unchanged)
             progress_bar = "".join(
                 [
                     Fore.BLUE + Style.BRIGHT + char + Style.RESET_ALL
@@ -97,14 +96,14 @@ def run_command_with_progress(command, verbose):
                 ]
             )
 
-            # Add different colors for the '::' separators
+            # Add different colors for the '::' separators (unchanged)
             separator_colors = [Fore.CYAN, Fore.MAGENTA, Fore.YELLOW, Fore.GREEN]
             separator_color_index = int(percent * len(separator_colors))
             separator = separator_colors[separator_color_index] + "::" + Style.RESET_ALL
 
             progress_bar = f"{separator} [{progress_bar}] {progress}/{total if total else '?'} [{elapsed:.2f}s]"
 
-            # Print the progress bar on the same line
+            # Print the progress bar on the same line (unchanged)
             print(f"\r{progress_bar}", end="", flush=True)
 
             if verbose:
@@ -156,77 +155,23 @@ def create_backup_directory(base_dir, app_name, verbose):
         print(colored(f":: Created dir {backup_dir}", "yellow"))
     return backup_dir
 
-
-def tar_directory(directory, verbose=False):
-    base_dir = os.path.basename(directory)
-    tar_file = f"{base_dir}.tar.xz"
-
-    files = list(Path(directory).rglob("*"))
-    total_files = len(files)
-
-    if verbose:
-        print(colored(f":: Compressing {directory}", "cyan"))
-
-    # Spinner animation characters
-    spinner = ['-', '/', '|', '\\']
-    spinner_index = 0
-
-    start_time = time.time()
-    progress = 0
-
-    with tarfile.open(tar_file, "w:xz") as tar:
-        while progress < total_files:
-            current_file = files[progress]
-            tar.add(current_file, arcname=os.path.relpath(current_file, directory))
-
-            # Update spinner and estimated time if verbose mode is enabled
-            if verbose:
-                elapsed_time = time.time() - start_time
-                files_per_second = progress / max(elapsed_time, 1e-5)  # Avoid division by zero
-                if files_per_second > 0:
-                    estimated_seconds_left = (total_files - progress) / files_per_second
-                else:
-                    estimated_seconds_left = 0
-
-                # Update spinner animation and display progress
-                print(f"\r:: Processing file {current_file} {spinner[spinner_index % len(spinner)]} ETA: {estimated_seconds_left:.1f}s", end="", flush=True)
-                spinner_index += 1
-
-            progress += 1
-
-    if verbose:
-        print()  # Move to next line after spinner
-
-    end_time = time.time()
-    duration = end_time - start_time
-
-    if verbose:
-        print(colored(f":: Compression completed: {tar_file}", "green"))
-        print(f":: Total files processed: {total_files}")
-        print(f":: Total time taken: {duration:.2f} seconds")
-
-    return tar_file
-
 def restore_backup(backup_dir, app_name, verbose):
-    """Restore a backup directory or tar.xz file."""
+    """Restore a backup directory."""
     print(colored(f":: Restoring {app_name}", "green"))
-    if backup_dir.endswith(".tar.xz"):
-        with tarfile.open(backup_dir, "r:xz") as tar:
-            tar.extractall(path=f"/var/lib/{app_name}")
-        print(colored(f":: Extracted {backup_dir} to /var/lib/{app_name}", "green"))
+
+    # Example for directory restoration, modify as per your needs
+    command = [
+        "rsync",
+        "-a",
+        "--info=progress2",
+        backup_dir,
+        f"/var/lib/{app_name}",
+    ]
+    returncode = run_command_with_progress(command, verbose)
+    if returncode != 0:
+        print(colored(f":: Restore failed with exit code {returncode}", "red"))
     else:
-        command = [
-            "rsync",
-            "-a",
-            "--info=progress2",
-            backup_dir,
-            f"/var/lib/{app_name}",
-        ]
-        returncode = run_command_with_progress(command, verbose)
-        if returncode != 0:
-            print(colored(f":: Restore failed with exit code {returncode}", "red"))
-        else:
-            print(colored(f":: Restored {backup_dir} to /var/lib/{app_name}", "green"))
+        print(colored(f":: Restored {backup_dir} to /var/lib/{app_name}", "green"))
 
 def parse_args():
     """Parse command line arguments."""
@@ -264,8 +209,7 @@ def main():
                 backup_dir = create_backup_directory(args.directory, app_name, args.verbose)
                 for path in paths:
                     backup_directory(path, backup_dir, args.verbose)
-                tar_file = tar_directory(backup_dir, args.verbose)
-                print(colored(f":: Backup completed for {app_name}. Archive: {tar_file}", "green"))
+                print(colored(f":: Backup completed for {app_name}.", "green"))
         else:
             if args.app not in backup_paths:
                 print(colored(f":: Application '{args.app}' not found in backup_paths.", "red"))
@@ -274,8 +218,7 @@ def main():
             backup_dir = create_backup_directory(args.directory, args.app, args.verbose)
             for path in paths:
                 backup_directory(path, backup_dir, args.verbose)
-            tar_file = tar_directory(backup_dir, args.verbose)
-            print(colored(f":: Backup completed for {args.app}. Archive: {tar_file}", "green"))
+            print(colored(f":: Backup completed for {args.app}.", "green"))
 
     elif args.restore:
         if args.app == "all":
